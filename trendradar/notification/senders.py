@@ -32,6 +32,12 @@ import requests
 from .batch import add_batch_headers, get_max_batch_header_size
 from .formatters import convert_markdown_to_mrkdwn, strip_markdown
 
+# 20260309
+import hmac
+import hashlib
+import base64
+import urllib.parse
+
 
 def _extract_ai_stats(ai_analysis) -> Optional[Dict]:
     """从 AI 分析结果中提取统计数据"""
@@ -229,6 +235,7 @@ def send_to_feishu(
 
 def send_to_dingtalk(
     webhook_url: str,
+    secret: str, # 20260309 新增 机器人安全设置的加签secret
     report_data: Dict,
     report_type: str,
     update_info: Optional[Dict] = None,
@@ -269,6 +276,25 @@ def send_to_dingtalk(
     proxies = None
     if proxy_url:
         proxies = {"http": proxy_url, "https": proxy_url}
+        
+    # 20260309 新增 机器人安全设置的加签secret
+    if webhook_url and secret:
+        """
+        发送钉钉自定义机器人群消息
+        :param access_token: 机器人webhook的access_token
+        :param secret: 机器人安全设置的加签secret
+        :param msg: 消息内容
+        :param at_user_ids: @的用户ID列表
+        :param at_mobiles: @的手机号列表
+        :param is_at_all: 是否@所有人
+        :return: 钉钉API响应
+        """
+        timestamp = str(round(time.time() * 1000))
+        string_to_sign = f'{timestamp}\n{secret}'
+        hmac_code = hmac.new(secret.encode('utf-8'), string_to_sign.encode('utf-8'), digestmod=hashlib.sha256).digest()
+        sign = urllib.parse.quote_plus(base64.b64encode(hmac_code))
+
+        webhook_url = f'{webhook_url}&timestamp={timestamp}&sign={sign}'
 
     # 日志前缀
     log_prefix = f"钉钉{account_label}" if account_label else "钉钉"

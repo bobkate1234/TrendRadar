@@ -453,6 +453,7 @@ class NotificationDispatcher:
             config_value=self.config["DINGTALK_WEBHOOK_URL"],
             send_func=lambda url, account_label: send_to_dingtalk(
                 webhook_url=url,
+                secret=self.config.get("DINGTALK_SECRET", ""), # 20260309 新增 机器人安全设置的加签secret
                 report_data=rd,
                 report_type=report_type,
                 update_info=update_info,
